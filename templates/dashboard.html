@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaptopSentinel — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens ─────────────────────────────── */
+:root {
+  --bg:          #0b0e14;
+  --bg-card:     #111722;
+  --bg-panel:    #161d2b;
+  --border:      #1f2d44;
+  --border-hi:   #2a3f5f;
+  --accent:      #00d4ff;
+  --accent-dim:  #0099bb;
+  --warn:        #ff6b35;
+  --danger:      #ff3b5c;
+  --ok:          #00e676;
+  --muted:       #4a6080;
+  --text:        #c8d8e8;
+  --text-hi:     #e8f0f8;
+  --text-lo:     #556070;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'Inter', sans-serif;
+  --r:           8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Login Overlay ─────────────────────────────── */
+#login-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.login-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 40px;
+  width: 360px;
+  text-align: center;
+}
+.login-logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: .2em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.login-box h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-hi);
+  margin-bottom: 32px;
+}
+.login-box input {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text-hi);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 12px 16px;
+  outline: none;
+  margin-bottom: 16px;
+  transition: border-color .2s;
+}
+.login-box input:focus { border-color: var(--accent); }
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-primary:hover { opacity: .85; }
+#login-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+/* ── App Shell ─────────────────────────────────── */
+#app { display: none; flex-direction: column; flex: 1; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+}
+.brand-icon {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.brand-icon svg { width: 18px; height: 18px; }
+.brand-name {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-hi);
+  letter-spacing: .04em;
+}
+.brand-tag {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+nav { display: flex; gap: 4px; }
+.nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.active { background: var(--bg-panel); border-color: var(--border); color: var(--text-hi); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+#live-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; color: var(--ok);
+}
+.pulse {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,230,118,.4); }
+  50% { opacity: .7; box-shadow: 0 0 0 5px rgba(0,230,118,0); }
+}
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 12px;
+  padding: 5px 12px; cursor: pointer; transition: border-color .15s;
+}
+.btn-ghost:hover { border-color: var(--border-hi); }
+
+/* ── Layout ────────────────────────────────────── */
+main { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 24px; }
+
+/* ── Stat Cards ────────────────────────────────── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px 24px;
+}
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 10px; }
+.stat-value { font-family: var(--mono); font-size: 28px; font-weight: 600; color: var(--text-hi); }
+.stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.stat-card.accent-ok .stat-value { color: var(--ok); }
+.stat-card.accent-warn .stat-value { color: var(--warn); }
+
+/* ── Device Grid ───────────────────────────────── */
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-size: 13px; font-weight: 600; color: var(--text-hi);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.device-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.device-card:hover { border-color: var(--border-hi); }
+.device-card.online { border-left: 3px solid var(--ok); }
+.device-card.offline { border-left: 3px solid var(--muted); }
+.device-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px;
+}
+.device-name { font-weight: 600; font-size: 15px; color: var(--text-hi); }
+.device-platform { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.status-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.status-badge.online { background: rgba(0,230,118,.12); color: var(--ok); }
+.status-badge.offline { background: rgba(74,96,128,.12); color: var(--muted); }
+.device-info { padding: 0 18px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.info-item label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; }
+.info-item span { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.device-actions {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.cmd-btn {
+  font-size: 11px; font-weight: 500; font-family: var(--sans);
+  padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border);
+  background: transparent; color: var(--text); cursor: pointer; transition: all .15s;
+}
+.cmd-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cmd-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.cmd-btn.warn:hover { border-color: var(--warn); color: var(--warn); }
+
+/* ── Battery bar ───────────────────────────────── */
+.battery-bar {
+  height: 4px; background: var(--bg-panel); border-radius: 2px;
+  margin: 6px 18px 0; overflow: hidden;
+}
+.battery-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+
+/* ── Event Log ─────────────────────────────────── */
+.log-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.log-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.log-body { max-height: 320px; overflow-y: auto; }
+.log-row {
+  display: grid; grid-template-columns: 140px 120px 1fr;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  font-size: 12px; gap: 12px; align-items: center;
+}
+.log-row:last-child { border-bottom: none; }
+.log-time { font-family: var(--mono); color: var(--muted); }
+.log-type {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .06em;
+  display: inline-block;
+}
+.log-type.connected { background: rgba(0,230,118,.1); color: var(--ok); }
+.log-type.command_issued { background: rgba(0,212,255,.1); color: var(--accent); }
+.log-type.notification_sent { background: rgba(255,107,53,.1); color: var(--warn); }
+.log-type.command_result { background: rgba(100,130,200,.1); color: #7090d0; }
+.log-type.device_removed { background: rgba(255,59,92,.1); color: var(--danger); }
+.log-detail { color: var(--text); }
+.empty-state { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ── Settings Panel ────────────────────────────── */
+.settings-panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 28px; max-width: 560px;
+}
+.settings-panel h2 { font-size: 16px; font-weight: 600; color: var(--text-hi); margin-bottom: 24px; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .07em; }
+.field input[type=text], .field input[type=email], .field input[type=password] {
+  width: 100%; background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-hi); font-family: var(--mono); font-size: 13px;
+  padding: 10px 14px; outline: none; transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle { width: 42px; height: 24px; position: relative; cursor: pointer; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 12px; transition: all .2s;
+}
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; background: white; border-radius: 50%;
+  transition: transform .2s; pointer-events: none;
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+.btn-save {
+  background: var(--accent); color: #000; border: none; border-radius: 6px;
+  font-weight: 600; font-size: 13px; padding: 10px 24px; cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-save:hover { opacity: .85; }
+.save-msg { font-size: 12px; color: var(--ok); margin-left: 12px; opacity: 0; transition: opacity .3s; }
+.save-msg.show { opacity: 1; }
+
+/* ── Toast ─────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 28px; right: 28px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 20px;
+  font-size: 13px; color: var(--text-hi);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  transform: translateY(80px); opacity: 0;
+  transition: all .3s; z-index: 200;
+  max-width: 320px;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── Setup Guide ───────────────────────────────── */
+.setup-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 28px;
+}
+.setup-card h3 { font-size: 15px; font-weight: 600; color: var(--text-hi); margin-bottom: 6px; }
+.setup-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.code-block {
+  background: #060a10; border: 1px solid var(--border);
+  border-radius: 6px; padding: 14px 16px;
+  font-family: var(--mono); font-size: 12px; color: #7ec8e3;
+  margin-bottom: 12px; white-space: pre; overflow-x: auto;
+  line-height: 1.7;
+}
+.step-list { counter-reset: steps; list-style: none; }
+.step-list li {
+  counter-increment: steps; padding-left: 32px; position: relative;
+  font-size: 13px; color: var(--text); margin-bottom: 14px; line-height: 1.6;
+}
+.step-list li::before {
+  content: counter(steps);
+  position: absolute; left: 0;
+  width: 22px; height: 22px;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 50%; font-family: var(--mono); font-size: 11px;
+  color: var(--accent); display: flex; align-items: center; justify-content: center;
+  top: 1px;
+}
+
+/* ── Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Mobile Nav (bottom tab bar) ───────────────── */
+#mobile-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mob-nav-inner {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+}
+.mob-nav-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 10px 4px;
+  background: transparent; border: none; color: var(--muted);
+  font-family: var(--sans); font-size: 10px; cursor: pointer;
+  transition: color .15s; -webkit-tap-highlight-color: transparent;
+}
+.mob-nav-btn svg { width: 20px; height: 20px; }
+.mob-nav-btn.active { color: var(--accent); }
+.mob-nav-btn.active svg { stroke: var(--accent); }
+
+/* ── Hamburger (mobile header right) ───────────── */
+#hamburger {
+  display: none;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; cursor: pointer;
+  color: var(--text);
+}
+
+/* ── Responsive breakpoints ─────────────────────── */
+
+/* Tablet: ≤900px */
+@media (max-width: 900px) {
+  header { padding: 12px 16px; }
+  main { padding: 16px; gap: 16px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-value { font-size: 22px; }
+  nav { display: none; }
+  #live-badge { font-size: 10px; }
+  .device-grid { grid-template-columns: 1fr; }
+  .settings-panel { max-width: 100%; }
+  .log-row { grid-template-columns: 110px 100px 1fr; font-size: 11px; padding: 9px 14px; }
+}
+
+/* Mobile: ≤600px */
+@media (max-width: 600px) {
+  /* Header — compact */
+  header { padding: 10px 14px; }
+  .brand-tag { display: none; }
+  .brand-name { font-size: 13px; }
+  .brand-icon { width: 28px; height: 28px; }
+  #live-badge span { display: none; } /* hide "LIVE" text, keep dot */
+  .btn-ghost { display: none; } /* sign out moved to settings */
+  #hamburger { display: flex; align-items: center; }
+
+  /* Bottom nav */
+  #mobile-nav { display: block; }
+  main { padding: 14px 12px 80px; gap: 14px; } /* bottom padding for nav bar */
+
+  /* Stats: 2x2 grid */
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 14px 16px; }
+  .stat-value { font-size: 20px; }
+  .stat-label { font-size: 10px; margin-bottom: 6px; }
+
+  /* Login box: full-width on small screens */
+  .login-box { width: calc(100vw - 32px); padding: 36px 24px; border-radius: 12px; }
+
+  /* Device cards */
+  .device-head { padding: 14px 14px 10px; }
+  .device-name { font-size: 14px; }
+  .device-info { padding: 0 14px 12px; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .info-item span { font-size: 11px; }
+  .device-actions { padding: 10px 14px; gap: 6px; }
+  .cmd-btn { font-size: 11px; padding: 6px 10px; flex: 1 1 auto; text-align: center; }
+  .battery-bar { margin: 4px 14px 0; }
+
+  /* Event log: stack columns */
+  .log-row {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 10px 14px;
+  }
+  .log-time { font-size: 10px; }
+  .log-detail { font-size: 12px; line-height: 1.4; }
+
+  /* Setup guide */
+  .setup-card { padding: 18px 16px; }
+  .code-block { font-size: 11px; padding: 12px; }
+  .step-list li { font-size: 12px; }
+
+  /* Settings */
+  .settings-panel { padding: 20px 16px; }
+
+  /* Toast: full width bottom */
+  #toast { bottom: 80px; right: 12px; left: 12px; max-width: none; font-size: 12px; }
+
+  /* Message modal */
+  #msg-modal > div { width: calc(100vw - 32px) !important; margin: 0 16px; }
+
+  /* Section heads */
+  .section-head { margin-bottom: 12px; }
+  .section-title { font-size: 12px; }
+}
+
+/* Very small: ≤380px */
+@media (max-width: 380px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stat-value { font-size: 18px; }
+  .cmd-btn { font-size: 10px; padding: 5px 8px; }
+  .brand-name { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">LaptopSentinel</div>
+    <h1>Dashboard Login</h1>
+    <input type="password" id="pw-input" placeholder="Enter password" autocomplete="current-password">
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <div id="login-error"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:20px;">Default password: <code style="font-family:var(--mono);color:var(--accent)">admin123</code></p>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">LaptopSentinel</div>
+        <div class="brand-tag">Device Tracker</div>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="showTab('devices',this)">Devices</button>
+      <button class="nav-btn" onclick="showTab('events',this)">Event Log</button>
+      <button class="nav-btn" onclick="showTab('setup',this)">Setup Guide</button>
+      <button class="nav-btn" onclick="showTab('settings',this)">Settings</button>
+    </nav>
+    <div class="header-right">
+      <div id="live-badge"><div class="pulse"></div><span>LIVE</span></div>
+      <button class="btn-ghost" onclick="doLogout()">Sign Out</button>
+      <button id="hamburger" onclick="doLogout()" title="Sign Out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile bottom nav -->
+  <div id="mobile-nav">
+    <div class="mob-nav-inner">
+      <button class="mob-nav-btn active" onclick="showTabMob('devices',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Devices
+      </button>
+      <button class="mob-nav-btn" onclick="showTabMob('events',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Events
+      </button>
+      <button class="mob-nav-btn" onclick="showTabMob('setup',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Guide
+      </button>
+      <button class="mob-nav-btn" onclick="showTabMob('settings',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Devices</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card accent-ok">
+        <div class="stat-label">Online Now</div>
+        <div class="stat-value" id="stat-online">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Offline</div>
+        <div class="stat-value" id="stat-offline">—</div>
+      </div>
+      <div class="stat-card accent-warn">
+        <div class="stat-label">Last Alert</div>
+        <div class="stat-value" id="stat-alert" style="font-size:14px;padding-top:6px">—</div>
+      </div>
+    </div>
+
+    <!-- Devices Tab -->
+    <div id="tab-devices">
+      <div class="section-head">
+        <span class="section-title">Tracked Devices</span>
+        <button class="btn-ghost" onclick="loadDevices()">↻ Refresh</button>
+      </div>
+      <div class="device-grid" id="device-grid">
+        <div class="empty-state">No devices registered yet. See Setup Guide.</div>
+      </div>
+    </div>
+
+    <!-- Events Tab -->
+    <div id="tab-events" style="display:none">
+      <div class="log-panel">
+        <div class="log-header">
+          <span class="section-title">Event Log</span>
+          <button class="btn-ghost" onclick="loadEvents()">↻ Refresh</button>
+        </div>
+        <div class="log-body" id="event-log">
+          <div class="empty-state">No events yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Setup Guide Tab -->
+    <div id="tab-setup" style="display:none">
+      <div class="setup-card">
+        <h3>Agent Setup Guide</h3>
+        <p>Install the tracking agent on any laptop you want to monitor. The agent checks in when the laptop connects to the internet and sends heartbeats every 60 seconds.</p>
+        <ol class="step-list">
+          <li>Copy <code style="font-family:var(--mono);color:var(--accent)">agent/agent.py</code> to the target laptop.</li>
+          <li>Install dependencies:
+            <div class="code-block">pip install requests psutil</div>
+          </li>
+          <li>Run the agent pointing at this server:
+            <div class="code-block">python agent.py --server http://YOUR_SERVER_IP:5000</div>
+          </li>
+          <li>Auto-start on boot (Windows — save as a .bat and add to Task Scheduler):
+            <div class="code-block">@echo off
+start /min python C:\tracker\agent.py --server http://YOUR_SERVER:5000</div>
+          </li>
+          <li>Auto-start on boot (macOS — add to LaunchAgents):
+            <div class="code-block">python3 /opt/tracker/agent.py --server http://YOUR_SERVER:5000 &</div>
+          </li>
+          <li>Auto-start on boot (Linux — add to crontab):
+            <div class="code-block">@reboot python3 /opt/tracker/agent.py --server http://YOUR_SERVER:5000 &</div>
+          </li>
+          <li>Once the agent runs, it will appear in the Devices tab automatically.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" style="display:none">
+      <div class="settings-panel">
+        <h2>Settings</h2>
+        <div class="field">
+          <label>Notification Email</label>
+          <input type="email" id="s-email" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label>Alert on Device Connect</label>
+          <div class="toggle-row">
+            <span style="font-size:13px;color:var(--text)">Send email when a device comes online</span>
+            <label class="toggle">
+              <input type="checkbox" id="s-notify" checked>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>New Password (leave blank to keep current)</label>
+          <input type="password" id="s-pw" placeholder="New password">
+        </div>
+        <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+        <span class="save-msg" id="save-msg">Saved ✓</span>
+        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+          <button class="btn-ghost" style="width:100%;padding:10px;font-size:13px" onclick="doLogout()">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Message Modal -->
+<div id="msg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px;width:380px">
+    <h3 style="color:var(--text-hi);margin-bottom:16px">Send Message to Device</h3>
+    <input type="text" id="msg-text" placeholder="Enter message..." style="width:100%;background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;color:var(--text-hi);font-family:var(--mono);font-size:13px;padding:10px 14px;outline:none;margin-bottom:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-ghost" onclick="closeMsgModal()">Cancel</button>
+      <button class="btn-primary" style="width:auto;padding:8px 20px" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+let currentMsgDevice = null;
+let autoRefreshTimer = null;
+
+// ── Auth ──────────────────────────────────────────
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  const res = await fetch('/api/login', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({password: pw})
+  });
+  if (res.ok) {
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    loadDevices(); loadEvents(); loadSettings();
+    startAutoRefresh();
+  } else {
+    document.getElementById('login-error').textContent = 'Incorrect password';
+  }
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogout() {
+  await fetch('/api/logout', {method:'POST'});
+  location.reload();
+}
+
+// ── Tab Nav ───────────────────────────────────────
+function showTab(name, btn) {
+  ['devices','events','setup','settings'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  // sync mobile nav
+  document.querySelectorAll('.mob-nav-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['devices','events','setup','settings'][i] === name);
+  });
+  if (name === 'events') loadEvents();
+  if (name === 'settings') loadSettings();
+}
+
+function showTabMob(name, btn) {
+  showTab(name, null);
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Devices ───────────────────────────────────────
+async function loadDevices() {
+  const res = await fetch('/api/devices');
+  if (!res.ok) return;
+  const devices = await res.json();
+  const grid = document.getElementById('device-grid');
+  const online = devices.filter(d => d.status === 'online').length;
+  document.getElementById('stat-total').textContent = devices.length;
+  document.getElementById('stat-online').textContent = online;
+  document.getElementById('stat-offline').textContent = devices.length - online;
+
+  if (devices.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No devices registered yet. See the Setup Guide tab.</div>';
+    return;
+  }
+  grid.innerHTML = devices.map(d => deviceCard(d)).join('');
+}
+
+function deviceCard(d) {
+  const bat = d.battery;
+  const batColor = !bat ? '#4a6080' : bat.percent > 50 ? 'var(--ok)' : bat.percent > 20 ? 'var(--warn)' : 'var(--danger)';
+  const loc = d.location || {};
+  const locStr = [loc.city, loc.country].filter(Boolean).join(', ') || 'Unknown';
+  const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString() : '—';
+  const batBar = bat ? `
+    <div class="battery-bar">
+      <div class="battery-fill" style="width:${bat.percent}%;background:${batColor}"></div>
+    </div>` : '';
+
+  return `<div class="device-card ${d.status}">
+    <div class="device-head">
+      <div>
+        <div class="device-name">${esc(d.hostname)}</div>
+        <div class="device-platform">${esc(d.platform)} · ${esc(d.username)}</div>
+      </div>
+      <span class="status-badge ${d.status}">${d.status}</span>
+    </div>
+    ${batBar}
+    <div class="device-info">
+      <div class="info-item"><label>IP Address</label><span>${esc(d.ip_address||'—')}</span></div>
+      <div class="info-item"><label>Location</label><span>${esc(locStr)}</span></div>
+      <div class="info-item"><label>Device ID</label><span>${esc(d.device_id)}</span></div>
+      <div class="info-item"><label>Last Seen</label><span>${lastSeen}</span></div>
+      ${bat ? `<div class="info-item"><label>Battery</label><span style="color:${batColor}">${bat.percent}% ${bat.plugged?'⚡':''}</span></div>` : ''}
+      ${loc.isp ? `<div class="info-item"><label>Network</label><span>${esc(loc.isp.substring(0,24))}</span></div>` : ''}
+    </div>
+    <div class="device-actions">
+      <button class="cmd-btn" onclick="sendCmd('${d.device_id}','lock')">🔒 Lock</button>
+      <button class="cmd-btn" onclick="openMsgModal('${d.device_id}')">💬 Message</button>
+      <button class="cmd-btn" onclick="sendCmd('${d.device_id}','screenshot')">📸 Screenshot</button>
+      <button class="cmd-btn warn" onclick="sendCmd('${d.device_id}','shutdown')">⏻ Shutdown</button>
+      <button class="cmd-btn danger" onclick="removeDevice('${d.device_id}')">✕ Remove</button>
+    </div>
+  </div>`;
+}
+
+// ── Commands ──────────────────────────────────────
+async function sendCmd(deviceId, command, args={}) {
+  const confirmMsgs = {
+    shutdown: 'Send SHUTDOWN command? The laptop will power off.',
+    wipe_confirm: '⚠️ WIPE DATA? This is irreversible!',
+  };
+  if (confirmMsgs[command] && !confirm(confirmMsgs[command])) return;
+
+  await fetch('/api/command', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({device_id: deviceId, command, args})
+  });
+  toast(`Command "${command}" queued — will execute on next heartbeat.`);
+  setTimeout(loadEvents, 1000);
+}
+
+function openMsgModal(deviceId) {
+  currentMsgDevice = deviceId;
+  const modal = document.getElementById('msg-modal');
+  modal.style.display = 'flex';
+  document.getElementById('msg-text').focus();
+}
+function closeMsgModal() {
+  document.getElementById('msg-modal').style.display = 'none';
+  currentMsgDevice = null;
+}
+async function sendMessage() {
+  const text = document.getElementById('msg-text').value.trim();
+  if (!text) return;
+  await sendCmd(currentMsgDevice, 'message', {text});
+  closeMsgModal();
+}
+
+async function removeDevice(deviceId) {
+  if (!confirm('Remove this device from the dashboard?')) return;
+  await fetch('/api/remove_device', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({device_id: deviceId})
+  });
+  toast('Device removed.');
+  loadDevices();
+}
+
+// ── Events ────────────────────────────────────────
+async function loadEvents() {
+  const res = await fetch('/api/events');
+  if (!res.ok) return;
+  const events = await res.json();
+  const log = document.getElementById('event-log');
+  if (events.length === 0) {
+    log.innerHTML = '<div class="empty-state">No events recorded yet.</div>';
+    return;
+  }
+  // Update last alert stat
+  const alert = events.find(e => e.type === 'connected' || e.type === 'notification_sent');
+  if (alert) {
+    document.getElementById('stat-alert').textContent =
+      new Date(alert.timestamp).toLocaleTimeString();
+  }
+  log.innerHTML = events.map(e => `
+    <div class="log-row">
+      <span class="log-time">${new Date(e.timestamp).toLocaleString()}</span>
+      <span class="log-type ${e.type}">${e.type.replace('_',' ')}</span>
+      <span class="log-detail">${esc(e.detail)} <span style="color:var(--muted);font-size:10px">[${esc(e.device_id)}]</span></span>
+    </div>`).join('');
+}
+
+// ── Settings ──────────────────────────────────────
+async function loadSettings() {
+  const res = await fetch('/api/settings');
+  if (!res.ok) return;
+  const s = await res.json();
+  document.getElementById('s-email').value = s.notify_email || '';
+  document.getElementById('s-notify').checked = s.notify_on_connect !== false;
+}
+
+async function saveSettings() {
+  const payload = {
+    notify_email: document.getElementById('s-email').value,
+    notify_on_connect: document.getElementById('s-notify').checked,
+    new_password: document.getElementById('s-pw').value,
+  };
+  await fetch('/api/settings', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const msg = document.getElementById('save-msg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+}
+
+// ── Auto Refresh ──────────────────────────────────
+function startAutoRefresh() {
+  autoRefreshTimer = setInterval(() => {
+    loadDevices();
+    const activeTab = document.querySelector('.nav-btn.active')?.textContent;
+    if (activeTab === 'Event Log') loadEvents();
+  }, 15000);
+}
+
+// ── Utils ─────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
